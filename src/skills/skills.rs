@@ -1,9 +1,12 @@
 use std::fmt;
 
-use crate::{character::experience::Experience, error::error::TOR2Error};
+use crate::{
+    character::experience::Experience, 
+    error::error::TOR2Error
+};
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub enum CharacterSkill {
     Awe,
     Athletics,
@@ -33,31 +36,29 @@ impl fmt::Display for CharacterSkill {
     }
 }
 
-pub struct CharacterAttributes {
-    strength: Attribute,
-    heart: Attribute,
-    wits: Attribute,
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
+pub enum CharacterAttribute {
+    Strength,
+    Heart,
+    Wits,
 }
 
+#[derive(Clone, Copy)]
 pub struct Attribute {
-    rating: u8,
-    target_number: u8,
+    pub name: CharacterAttribute,
+    pub rating: u8,
+    pub target_number: u8,
 }
 
-pub struct Skill<'a> {
-    pub name: String,
-    target_attribute: &'a Attribute,
-    level: u8,
+#[derive(Clone, Copy)]
+pub struct Skill {
+    pub name: CharacterSkill,
+    pub target_attribute: CharacterAttribute,
+    pub level: u8,
+    pub is_favoured: bool,
 }
 
-impl <'a: 'b, 'b> Skill<'b> {
-    pub fn new(name: String, target_attribute: &'a Attribute) -> Self {
-        return Self{
-            name,
-            target_attribute,
-            level: 0,
-        };
-    }
+impl Skill {
 
     pub fn increase_by(&mut self, increase: u8, experience: &mut Experience) -> Result<(), TOR2Error> {
         let cost : i16 = match self.level {
@@ -102,8 +103,9 @@ impl <'a: 'b, 'b> Skill<'b> {
 }
 
 impl Attribute {
-    pub fn new(rating: u8) -> Self {
+    pub fn new(name: CharacterAttribute, rating: u8) -> Self {
         return Self{
+            name,
             rating,
             target_number: 20 - rating,
         };
@@ -114,16 +116,16 @@ impl Attribute {
 mod tests {
     use crate::character::experience::Experience;
 
-    use super::{Attribute, CharacterSkill, Skill};
+    use super::{Attribute, CharacterSkill, Skill, CharacterAttribute};
 
     #[test]
     fn test_skill_increase_incremental() {
-        let wits = Attribute::new(5);
+        let wits = Attribute::new(CharacterAttribute::Wits, 5);
         let experience = &mut Experience{
             skill_points: 10,
             adventure_points: 0,
         };
-        let mut skill = Skill::new(CharacterSkill::Stealth.to_string(), &wits);
+        let mut skill = Skill{name: CharacterSkill::Stealth, target_attribute: CharacterAttribute::Wits, level: 0, is_favoured: false};
         assert_eq!(skill.level, 0);
         skill.increase_by(1, experience).unwrap();
         assert_eq!(skill.level, 1);

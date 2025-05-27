@@ -3,6 +3,7 @@ use crate::{
     skills::skills::Attribute
 };
 
+#[derive(Clone, Copy)]
 pub enum Reward<'a> {
     Keen(&'a Weapon),
     Fell(&'a Weapon),
@@ -12,6 +13,7 @@ pub enum Reward<'a> {
     Reinforced(&'a Shield),
 }
 
+#[derive(Clone, Copy)]
 pub enum Virtue<'a> {
     Confidence,
     DourHanded,
@@ -21,6 +23,7 @@ pub enum Virtue<'a> {
     Prowess(&'a Attribute),
 }
 
+#[derive(Clone, Copy)]
 pub struct Experience {
     pub skill_points: u8,
     pub adventure_points: u8,
