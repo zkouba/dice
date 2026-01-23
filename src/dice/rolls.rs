@@ -5,32 +5,42 @@ use rand::random_range;
 use crate::dice::rolls::Favourableness::{Favoured, Illfavoured, Neutral};
 use crate::dice::rolls::RollResultType::{AutoFailure, AutoSuccess, Numerical};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct DiceRoll {
     result_type: RollResultType,
     total: u8,
     feat_die: u8,
     success_dice: SuccessDiceRoll,
+    formula: String,
 }
 
 impl Display for DiceRoll {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.result_type {
             AutoSuccess => {
-                write!(f, "{}", format!("(Auto-success; extra: {:?})", self.success_dice.extra_successes))
+                write!(
+                    f,
+                    "({}) => (Auto-success; extra: {})",
+                    self.formula,
+                    self.success_dice.extra_successes
+                )
             }
             AutoFailure => {
-                write!(f, "{}", format!("(Auto-failure; extra: {:?})", self.success_dice.extra_successes))
+                write!(
+                    f,
+                    "({}) => (Auto-failure; extra: {})",
+                    self.formula,
+                    self.success_dice.extra_successes
+                )
             }
             Numerical => {
-                let feat_str = if self.feat_die == FEAT_DIE_GANDALF {
-                    "Gandalf".to_owned()
-                } else if self.feat_die == FEAT_DIE_SAURON {
-                    "Sauron".to_owned()
-                } else {
-                    self.feat_die.to_string()
-                };
-                write!(f, "{}", format!("({}; feat: {}; extra: {})", self.total, feat_str, self.success_dice.extra_successes))
+                write!(f, "({}) => ({}; feat: ", self.formula, self.total)?;
+                match self.feat_die {
+                    FEAT_DIE_GANDALF => write!(f, "Gandalf")?,
+                    FEAT_DIE_SAURON => write!(f, "Sauron")?,
+                    other => write!(f, "{other}")?,
+                }
+                write!(f, "; extra: {})", self.success_dice.extra_successes)
             }
         }
     }
@@ -160,18 +170,23 @@ pub fn roll(
     is_inspired: bool,
     is_assisted: bool,
 ) -> DiceRoll {
+    let mut formula = String::new();
     let feat_die_result = match favourableness {
         Favourableness::Favoured => {
+            formula.push_str("2d12+ ");
             let x1 = d12();
             let x2 = d12();
             max(x1, x2)
+
         }
         Favourableness::Illfavoured => {
+            formula.push_str("2d12- ");
             let x1 = d12();
             let x2 = d12();
             max(x1, x2)
         }
         Favourableness::Neutral(_) => {
+            formula.push_str("1d12 ");
             d12()
         }
     };
@@ -187,6 +202,7 @@ pub fn roll(
         succ_dice_cnt += 1;
     }
     succ_dice_cnt = max(0, (succ_dice_cnt as i8) + extra_dice) as u8;
+    formula.push_str(format!("{}d6 ", succ_dice_cnt).as_str());
     let succ_dice_result = roll_n_d6(succ_dice_cnt, is_weary);
     let result_type = if is_miserable && feat_die_result == FEAT_DIE_SAURON {
         AutoFailure
@@ -200,6 +216,7 @@ pub fn roll(
         total: feat_die_result + succ_dice_result.sum,
         feat_die: feat_die_result,
         success_dice: succ_dice_result,
+        formula: formula,
     }
 }
 
