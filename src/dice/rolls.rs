@@ -1,8 +1,6 @@
 use std::cmp::max;
+use std::fmt::Display;
 use std::ops::{Add, AddAssign};
-use std::str::FromStr;
-use clap::builder::ValueParserFactory;
-use clap::ValueEnum;
 use rand::random_range;
 use crate::dice::rolls::Favourableness::{Favoured, Illfavoured, Neutral};
 use crate::dice::rolls::RollResultType::{AutoFailure, AutoSuccess, Numerical};
@@ -15,14 +13,14 @@ pub struct DiceRoll {
     success_dice: SuccessDiceRoll,
 }
 
-impl ToString for DiceRoll {
-    fn to_string(&self) -> String {
+impl Display for DiceRoll {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.result_type {
             AutoSuccess => {
-                return format!("(Auto-success; extra: {:?})", self.success_dice.extra_successes);
+                write!(f, "{}", format!("(Auto-success; extra: {:?})", self.success_dice.extra_successes))
             }
             AutoFailure => {
-                return format!("(Auto-failure; extra: {:?})", self.success_dice.extra_successes);
+                write!(f, "{}", format!("(Auto-failure; extra: {:?})", self.success_dice.extra_successes))
             }
             Numerical => {
                 let feat_str = if self.feat_die == FEAT_DIE_GANDALF {
@@ -32,7 +30,7 @@ impl ToString for DiceRoll {
                 } else {
                     self.feat_die.to_string()
                 };
-                return format!("({}; feat: {}; extra: {})", self.total, feat_str, self.success_dice.extra_successes);
+                write!(f, "{}", format!("({}; feat: {}; extra: {})", self.total, feat_str, self.success_dice.extra_successes))
             }
         }
     }
@@ -60,56 +58,56 @@ impl Add for Favourableness {
     type Output = Favourableness;
     fn add(self, other: Self) -> Self::Output {
         match self {
-            Favourableness::Favoured => {
+            Favoured => {
                 match other {
                     Favoured => {
-                        return self;
+                        self
                     }
                     Illfavoured => {
-                        return Neutral(true);
+                        Neutral(true)
                     }
                     Neutral(combined) => {
                         if combined {
-                            return other;
+                            other
                         } else {
-                            return self;
+                            self
                         }
                     }
                 }
             }
-            Favourableness::Illfavoured => {
+            Illfavoured => {
                 match other {
                     Favoured => {
-                        return Neutral(true);
+                        Neutral(true)
                     }
                     Illfavoured => {
-                        return self;
+                        self
                     }
                     Neutral(combined) => {
                         if combined {
-                            return other;
+                            other
                         } else {
-                            return self;
+                            self
                         }
                     }
                 }
             }
-            Favourableness::Neutral(combined) => {
+            Neutral(combined) => {
                 if combined {
                     return self;
                 }
                 match other {
                     Favourableness::Favoured => {
-                        return other;
+                        other
                     }
                     Favourableness::Illfavoured => {
-                        return other;
+                        other
                     }
                     Favourableness::Neutral(other_combined) => {
                         if other_combined {
-                            return other;
+                            other
                         } else {
-                            return Neutral(false);
+                            Neutral(false)
                         }
                     }
                 }
