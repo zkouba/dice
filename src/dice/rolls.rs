@@ -32,6 +32,20 @@ pub enum Favourableness {
     Neutral(bool),
 }
 
+impl Favourableness {
+    pub fn combine(favoured: bool, illfavoured: bool) -> Self {
+        let mut favourableness = if favoured {
+            Favourableness::Favoured
+        } else {
+            Favourableness::Neutral(false)
+        };
+        if illfavoured {
+            favourableness += Favourableness::Illfavoured;
+        }
+        favourableness
+    }
+}
+
 impl Add for Favourableness {
     type Output = Favourableness;
     fn add(self, other: Self) -> Self::Output {
