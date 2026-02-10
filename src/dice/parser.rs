@@ -2,7 +2,7 @@ use regex::Regex;
 use crate::dice::rolls::{DiceRoll, Favourableness};
 use crate::dice::error::DiceError;
 
-const DICE_EXPRESSION : &str = r"^([+\\-]?)(\d+)d(\d+)$";
+const DICE_EXPRESSION : &str = r"^([+\\-]|\d+)d(\d+)$";
 
 pub fn parse_dice_roll(input: &str) -> Result<Vec<DiceRoll>, DiceError> {
     let mut rolls = Vec::<DiceRoll>::new();
@@ -20,24 +20,31 @@ pub fn parse_dice_expression(expression: &str) -> Result<Vec<DiceRoll>, DiceErro
     let re = Regex::new(DICE_EXPRESSION).map_err(|e| DiceError::new_caused_by(Box::new(e)))?; // TODO - extract into an object initialization
     if let Some(captured_groups) = re.captures(expression) {
         let mut capture_idx = 1;
-        let favourableness = if let Some(sign) = captured_groups.get(capture_idx) {
-            let sign_str = sign.as_str();
+        let favourableness: Favourableness;
+        let dice_num: usize;
+        if let Some(sign_or_cnt) = captured_groups.get(capture_idx) {
+            let sign_or_cnt_str = sign_or_cnt.as_str();
             capture_idx += 1;
-            match sign_str {
-                "+" => Favourableness::Favoured,
-                "-" => Favourableness::Illfavoured,
-                "" => Favourableness::Neutral(false),
-                _ => return Err(DiceError::new_standalone(format!("Invalid favourableness specification: {}", expression)))
+            match sign_or_cnt_str {
+                "+" => {
+                    favourableness = Favourableness::Favoured;
+                    dice_num = 1;
+                },
+                "-" => {
+                    favourableness = Favourableness::Illfavoured;
+                    dice_num = 1;
+                },
+                "" => return Err(DiceError::new_standalone(format!("Invalid favourableness specification: {}", expression))),
+                _ => {
+                    favourableness = Favourableness::Neutral(false);
+                    dice_num = sign_or_cnt_str
+                        .parse::<usize>()
+                        .map_err(|e| DiceError::new_caused_by(Box::new(e)))?;
+                },
             }
         } else {
             return Err(DiceError::new_standalone(format!("Unable to detect favourableness specification: {}", expression)))
-        };
-        let dice_num = if let Some(dice_num_str) = captured_groups.get(capture_idx) {
-            capture_idx += 1;
-            dice_num_str.as_str().parse::<usize>().map_err(|e| DiceError::new_caused_by(Box::new(e)))?
-        } else {
-            return Err(DiceError::new_standalone(format!("Unable to detect number of dice : {}", expression)))
-        };
+        }
         if let Some(dice_type_str) = captured_groups.get(capture_idx) {
             match dice_type_str.as_str() {
                 "6" => {
