@@ -9,7 +9,7 @@ use crate::dice::rolls::{roll, RollResult};
 mod dice;
 
 fn main() {
-    let prompt = ">: ";
+    let prompt = "🎲: ";
     let mut stdout = std::io::stdout();
     let mut input = String::new();
     let mut history = Vec::<String>::new();
@@ -33,6 +33,9 @@ fn main() {
                     }
                     KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         println!();
+                        stdout.execute(cursor::MoveToColumn(0)).expect("Failed to reset cursor.");
+                        println!("Exiting...");
+                        terminal::disable_raw_mode().expect("Failed to disable raw mode");
                         return;
                     }
                     KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
@@ -54,8 +57,8 @@ fn main() {
                         input = history[history.len() - history_index].clone();
 
                         // Redraw prompt + current input.
-                        stdout.execute(cursor::MoveToColumn(0)).unwrap();
-                        stdout.execute(terminal::Clear(ClearType::CurrentLine)).unwrap();
+                        stdout.execute(cursor::MoveToColumn(0)).expect("Failed to reset cursor.");
+                        stdout.execute(terminal::Clear(ClearType::CurrentLine)).expect("Failed to clear line.");
                         print!("{prompt}{input}");
                     }
                     KeyCode::Down => {
@@ -67,8 +70,8 @@ fn main() {
                         input = history[history.len() - history_index].clone();
 
                         // Redraw prompt + current input.
-                        stdout.execute(cursor::MoveToColumn(0)).unwrap();
-                        stdout.execute(terminal::Clear(ClearType::CurrentLine)).unwrap();
+                        stdout.execute(cursor::MoveToColumn(0)).expect("Failed to reset cursor.");
+                        stdout.execute(terminal::Clear(ClearType::CurrentLine)).expect("Failed to clear line.");
                         print!("{prompt}{input}");
                     }
                     KeyCode::Backspace => {
@@ -76,15 +79,15 @@ fn main() {
                         history_index = 0;
 
                         // Redraw prompt + current input (so removed char is reflected).
-                        stdout.execute(cursor::MoveToColumn(0)).unwrap();
-                        stdout.execute(terminal::Clear(ClearType::CurrentLine)).unwrap();
+                        stdout.execute(cursor::MoveToColumn(0)).expect("Failed to reset cursor.");
+                        stdout.execute(terminal::Clear(ClearType::CurrentLine)).expect("Failed to clear line.");
                         print!("{prompt}{input}");
                     }
                     _ => {}
                 }
             }
         }
-        stdout.execute(cursor::MoveToColumn(0)).unwrap();
+        stdout.execute(cursor::MoveToColumn(0)).expect("Failed to reset cursor.");
         terminal::disable_raw_mode().expect("Failed to disable raw mode");
 
         input = input.trim().to_lowercase();
