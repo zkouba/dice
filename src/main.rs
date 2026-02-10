@@ -35,6 +35,11 @@ fn main() {
                         println!();
                         return;
                     }
+                    KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        input.push(c);
+                        history_index = 0;
+                        print!("{c}")
+                    }
                     KeyCode::Esc => {
                         input.clear();
                         history_index = 0;
@@ -74,13 +79,6 @@ fn main() {
                         stdout.execute(cursor::MoveToColumn(0)).unwrap();
                         stdout.execute(terminal::Clear(ClearType::CurrentLine)).unwrap();
                         print!("{prompt}{input}");
-                    }
-                    KeyCode::Char(c) => {
-                        if !key.modifiers.contains(KeyModifiers::CONTROL) {
-                            input.push(c);
-                            history_index = 0;
-                            print!("{c}")
-                        }
                     }
                     _ => {}
                 }
