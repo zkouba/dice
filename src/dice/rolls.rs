@@ -33,16 +33,19 @@ pub enum Favourableness {
 }
 
 impl Favourableness {
-    pub fn combine(favoured: bool, illfavoured: bool) -> Self {
-        let mut favourableness = if favoured {
-            Favourableness::Favoured
-        } else {
-            Favourableness::Neutral(false)
-        };
-        if illfavoured {
-            favourableness += Favourableness::Illfavoured;
+    pub fn combine(&self, other: &Favourableness) -> Self {
+        if self.eq(&Favourableness::Neutral(true)) || other.eq(&Favourableness::Neutral(true)) {
+            return Favourableness::Neutral(true);
         }
-        favourableness
+        match (self, other) {
+            (Favourableness::Favoured, Favourableness::Illfavoured) => Favourableness::Neutral(true),
+            (Favourableness::Illfavoured, Favourableness::Favoured) => Favourableness::Neutral(true),
+            (Favourableness::Favoured, Favourableness::Neutral(false)) => Favourableness::Favoured,
+            (Favourableness::Neutral(false), Favourableness::Favoured) => Favourableness::Favoured,
+            (Favourableness::Illfavoured, Favourableness::Neutral(false)) => Favourableness::Illfavoured,
+            (Favourableness::Neutral(false), Favourableness::Illfavoured) => Favourableness::Illfavoured,
+            _ => self.clone(),
+        }
     }
 }
 
@@ -172,6 +175,27 @@ pub fn d6() -> RollResult {
 #[cfg(test)]
 mod tests {
     use crate::dice::rolls::*;
+
+    #[test]
+    pub fn favourableness_combine_test() {
+        assert_eq!(Favourableness::Neutral(true).combine(&Favourableness::Neutral(true)), Favourableness::Neutral(true));
+        assert_eq!(Favourableness::Neutral(true).combine(&Favourableness::Favoured), Favourableness::Neutral(true));
+        assert_eq!(Favourableness::Neutral(true).combine(&Favourableness::Illfavoured), Favourableness::Neutral(true));
+        assert_eq!(Favourableness::Illfavoured.combine(&Favourableness::Neutral(true)), Favourableness::Neutral(true));
+        assert_eq!(Favourableness::Favoured.combine(&Favourableness::Neutral(true)), Favourableness::Neutral(true));
+
+        assert_eq!(Favourableness::Neutral(false).combine(&Favourableness::Neutral(false)), Favourableness::Neutral(false));
+        assert_eq!(Favourableness::Favoured.combine(&Favourableness::Neutral(false)), Favourableness::Favoured);
+        assert_eq!(Favourableness::Illfavoured.combine(&Favourableness::Neutral(false)), Favourableness::Illfavoured);
+        assert_eq!(Favourableness::Neutral(false).combine(&Favourableness::Favoured), Favourableness::Favoured);
+        assert_eq!(Favourableness::Neutral(false).combine(&Favourableness::Illfavoured), Favourableness::Illfavoured);
+
+        assert_eq!(Favourableness::Favoured.combine(&Favourableness::Favoured), Favourableness::Favoured);
+        assert_eq!(Favourableness::Illfavoured.combine(&Favourableness::Illfavoured), Favourableness::Illfavoured);
+
+        assert_eq!(Favourableness::Favoured.combine(&Favourableness::Illfavoured), Favourableness::Neutral(true));
+        assert_eq!(Favourableness::Illfavoured.combine(&Favourableness::Favoured), Favourableness::Neutral(true));
+    }
 
     #[test]
     pub fn roll_d6_test() {
