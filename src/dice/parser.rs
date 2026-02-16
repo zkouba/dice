@@ -15,7 +15,6 @@ pub fn parse_dice_roll(input: &str) -> Result<Vec<DiceRoll>, DiceError> {
 
 
 //noinspection RsLift
-#[allow(clippy::needless_return)]
 pub fn parse_dice_expression(expression: &str) -> Result<Vec<DiceRoll>, DiceError> {
     let re = Regex::new(DICE_EXPRESSION).map_err(|e| DiceError::new_caused_by(Box::new(e)))?; // TODO - extract into an object initialization
     if let Some(captured_groups) = re.captures(expression) {
