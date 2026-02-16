@@ -1,6 +1,6 @@
 use std::io::Write;
 use crate::dice::parser::parse_dice_roll;
-use crate::dice::rolls::{roll, RollResult};
+use crate::dice::rolls::{roll, DiceRoll, RollResult};
 
 mod dice;
 mod text_app;
@@ -13,7 +13,7 @@ fn main() {
     _ = text_app::text_app_loop(prompt, &roll_dice_app);
 }
 
-fn roll_dice_app(roll_expressions: Vec<String>) {
+fn roll_dice_app(roll_expressions: Vec<String>) -> Result<(), DiceRoll>{
     let mut results = Vec::<RollResult>::with_capacity(roll_expressions.len());
     for i in 0..roll_expressions.len() {
         let expression = &roll_expressions[i];
