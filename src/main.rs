@@ -1,6 +1,7 @@
 use std::io::Write;
+use crate::dice::error::DiceError;
 use crate::dice::parser::parse_dice_roll;
-use crate::dice::rolls::{roll, DiceRoll, RollResult};
+use crate::dice::rolls::{roll, RollResult};
 
 mod dice;
 mod text_app;
@@ -13,16 +14,11 @@ fn main() {
     _ = text_app::text_app_loop(prompt, &roll_dice_app);
 }
 
-fn roll_dice_app(roll_expressions: Vec<String>) -> Result<(), DiceRoll>{
+fn roll_dice_app(roll_expressions: Vec<String>) -> Result<(), DiceError>{
     let mut results = Vec::<RollResult>::with_capacity(roll_expressions.len());
     for i in 0..roll_expressions.len() {
         let expression = &roll_expressions[i];
-        let rolls_res = parse_dice_roll(expression);
-        if rolls_res.is_err() {
-            println!("Error parsing dice roll: {}", roll_expressions[i]);
-            return;
-        }
-        let rolls = rolls_res.unwrap();
+        let rolls = parse_dice_roll(expression)?;
         for roll_cmd in rolls {
             results.push(roll(roll_cmd));
         }
@@ -34,4 +30,5 @@ fn roll_dice_app(roll_expressions: Vec<String>) -> Result<(), DiceRoll>{
         sum += result.value;
     }
     println!("Total: {}", sum);
+    Ok(())
 }
