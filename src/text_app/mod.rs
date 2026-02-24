@@ -93,11 +93,15 @@ pub fn text_app_loop(prompt: &str, app_logic: &dyn Fn(Vec<String>) -> Result<(),
             break;
         }
 
-        history.push(input.clone());
-        app_logic(
+        if let Err(err) = app_logic(
             input.clone().split_whitespace().map(|s| s.to_string()).collect()
-        )?;
+        ) {
+            println!("Error: {}", err);
+        } else {
+            history.push(input.clone());
+        }
+
         input.clear();
     }
-    Ok(())
+    return Ok(());
 }
