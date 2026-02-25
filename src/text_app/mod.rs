@@ -85,7 +85,7 @@ pub fn text_app_loop(prompt: &str, app_logic: &dyn Fn(String) -> Result<(), Dice
         stdout.execute(cursor::MoveToColumn(0)).expect("Failed to reset cursor.");
         terminal::disable_raw_mode().expect("Failed to disable raw mode");
 
-        input = input.trim().to_lowercase();
+        input = input.trim().to_string();
         if input.is_empty() {
             continue;
         }
