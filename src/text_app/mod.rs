@@ -5,7 +5,7 @@ use crossterm::event::{Event, KeyCode, KeyModifiers};
 use crossterm::terminal::ClearType;
 use crate::dice::error::DiceError;
 
-pub fn text_app_loop(prompt: &str, app_logic: &dyn Fn(Vec<String>) -> Result<(), DiceError>) -> Result<(), DiceError> {
+pub fn text_app_loop(prompt: &str, app_logic: &dyn Fn(String) -> Result<(), DiceError>) -> Result<(), DiceError> {
     let mut stdout = std::io::stdout();
     let mut input = String::new();
     let mut history = Vec::<String>::new();
@@ -93,9 +93,7 @@ pub fn text_app_loop(prompt: &str, app_logic: &dyn Fn(Vec<String>) -> Result<(),
             break;
         }
 
-        if let Err(err) = app_logic(
-            input.clone().split_whitespace().map(|s| s.to_string()).collect()
-        ) {
+        if let Err(err) = app_logic(input.clone()) {
             println!("Error: {}", err);
         } else {
             history.push(input.clone());

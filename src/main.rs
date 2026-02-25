@@ -14,7 +14,11 @@ fn main() {
     _ = text_app::text_app_loop(prompt, &roll_dice_app);
 }
 
-fn roll_dice_app(roll_expressions: Vec<String>) -> Result<(), DiceError>{
+fn roll_dice_app(roll_expressions_str: String) -> Result<(), DiceError>{
+    let roll_expressions = roll_expressions_str
+        .split_whitespace()
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();
     let mut results = Vec::<RollResult>::with_capacity(roll_expressions.len());
     for i in 0..roll_expressions.len() {
         let expression = &roll_expressions[i];
