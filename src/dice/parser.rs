@@ -1,5 +1,5 @@
 use regex::Regex;
-use crate::dice::rolls::{DiceRoll, Favourableness};
+use crate::dice::rolls::{DiceRoll, DiceType, Favourableness};
 use crate::dice::error::DiceError;
 
 const DICE_EXPRESSION : &str = r"^([+\\-]|\d+)d(\d+)$";
@@ -46,11 +46,29 @@ pub fn parse_dice_expression(expression: &str) -> Result<Vec<DiceRoll>, DiceErro
         }
         if let Some(dice_type_str) = captured_groups.get(capture_idx) {
             match dice_type_str.as_str() {
+                "2" => {
+                    return Ok(vec![DiceRoll{die_type: DiceType::D2, favourableness}; dice_num]);
+                }
+                "4" => {
+                    return Ok(vec![DiceRoll{die_type: DiceType::D4, favourableness}; dice_num]);
+                }
                 "6" => {
-                    return Ok(vec![DiceRoll::D6; dice_num]);
+                    return Ok(vec![DiceRoll{die_type: DiceType::D6, favourableness}; dice_num]);
+                }
+                "8" => {
+                    return Ok(vec![DiceRoll{die_type: DiceType::D8, favourableness}; dice_num]);
+                }
+                "10" => {
+                    return Ok(vec![DiceRoll{die_type: DiceType::D10, favourableness}; dice_num]);
                 }
                 "12" => {
-                    return Ok(vec![DiceRoll::D12(favourableness); dice_num])
+                    return Ok(vec![DiceRoll{die_type: DiceType::D12, favourableness}; dice_num])
+                }
+                "20" => {
+                    return Ok(vec![DiceRoll{die_type: DiceType::D20, favourableness}; dice_num])
+                }
+                "100" => {
+                    return Ok(vec![DiceRoll{die_type: DiceType::D100, favourableness}; dice_num])
                 }
                 _ => return Err(DiceError::new_standalone(format!("Invalid dice type: {}", expression))),
             }
@@ -73,26 +91,26 @@ mod tests {
         let rolls = result.unwrap();
         assert_eq!(rolls.len(), 3);
         for roll in rolls {
-            assert_eq!(roll, DiceRoll::D6);
+            assert_eq!(roll, DiceRoll{die_type: DiceType::D6, favourableness: Favourableness::Neutral(false)});
         }
     }
 
     #[test]
     fn test_parse_d12_favoured() {
-        let result = parse_dice_expression("+1d12");
+        let result = parse_dice_expression("+d12");
         assert!(result.is_ok());
         let rolls = result.unwrap();
         assert_eq!(rolls.len(), 1);
-        assert_eq!(rolls[0], DiceRoll::D12(Favourableness::Favoured));
+        assert_eq!(rolls[0], DiceRoll{die_type: DiceType::D12, favourableness: Favourableness::Favoured});
     }
 
     #[test]
     fn test_parse_d12_illfavoured() {
-        let result = parse_dice_expression("-1d12");
+        let result = parse_dice_expression("-d12");
         assert!(result.is_ok());
         let rolls = result.unwrap();
         assert_eq!(rolls.len(), 1);
-        assert_eq!(rolls[0], DiceRoll::D12(Favourableness::Illfavoured));
+        assert_eq!(rolls[0], DiceRoll{ die_type: DiceType::D12, favourableness: Favourableness::Illfavoured});
     }
 
     #[test]
@@ -103,7 +121,7 @@ mod tests {
 
     #[test]
     fn test_invalid_dice_type() {
-        let result = parse_dice_expression("2d20");
+        let result = parse_dice_expression("2d42");
         assert!(result.is_err());
     }
 }

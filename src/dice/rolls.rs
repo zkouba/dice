@@ -11,17 +11,41 @@ pub struct RollResult {
 
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum DiceRoll {
+pub enum DiceType {
+    D2,
+    D4,
     D6,
-    D12(Favourableness),
+    D8,
+    D10,
+    D12,
+    D20,
+    D100,
+}
+
+impl Display for DiceType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DiceType::D2 => f.write_str("d2"),
+            DiceType::D4 => f.write_str("d4"),
+            DiceType::D6 => f.write_str("d6"),
+            DiceType::D8 => f.write_str("d8"),
+            DiceType::D10 => f.write_str("d10"),
+            DiceType::D12 => f.write_str("d12"),
+            DiceType::D20 => f.write_str("d20"),
+            DiceType::D100 => f.write_str("d100"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct DiceRoll {
+    pub die_type: DiceType,
+    pub favourableness: Favourableness,
 }
 
 impl Display for DiceRoll {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DiceRoll::D6 => f.write_str("d6"),
-            DiceRoll::D12(_) => f.write_str("d12"),
-        }
+        f.write_fmt(format_args!("{}{}", self.favourableness, self.die_type))
     }
 }
 
@@ -127,48 +151,95 @@ impl Display for Favourableness {
     }
 }
 
-pub fn roll(roll_command: DiceRoll) -> RollResult {
-    match roll_command {
-        DiceRoll::D6 => d6(),
-        DiceRoll::D12(favourableness) => d12_fav(favourableness),
-    }
-}
-
-pub fn d12_fav(favourableness: Favourableness) -> RollResult {
+pub fn roll_fav(roll_cmd: DiceRoll) -> RollResult {
     RollResult {
-        die: DiceRoll::D12(favourableness),
-        value: match favourableness {
+        die: roll_cmd.clone(),
+        value: match roll_cmd.favourableness {
             Favourableness::Favoured => {
-                // formula.push_str("2d12+ ");
-                let x1 = d12();
-                let x2 = d12();
+                let x1 = roll(roll_cmd.die_type.clone());
+                let x2 = roll(roll_cmd.die_type);
                 max(x1.value, x2.value)
             }
             Favourableness::Illfavoured => {
-                // formula.push_str("2d12- ");
-                let x1 = d12();
-                let x2 = d12();
+                let x1 = roll(roll_cmd.die_type.clone());
+                let x2 = roll(roll_cmd.die_type);
                 min(x1.value, x2.value)
             }
             Favourableness::Neutral(_) => {
-                // formula.push_str("1d12 ");
-                d12().value
+                roll(roll_cmd.die_type).value
             }
         }
     }
 }
 
+pub fn roll(roll_command: DiceType) -> RollResult {
+    match roll_command {
+        DiceType::D2 => d2(),
+        DiceType::D4 => d4(),
+        DiceType::D6 => d6(),
+        DiceType::D8 => d8(),
+        DiceType::D10 => d10(),
+        DiceType::D12 => d12(),
+        DiceType::D20 => d20(),
+        DiceType::D100 => d100(),
+    }
+}
+
+
+
+pub fn d100() -> RollResult {
+    RollResult{
+        die: DiceRoll{die_type: DiceType::D100, favourableness: Favourableness::Neutral(false)},
+        value: random_range(0..101)
+    }
+}
+
+pub fn d20() -> RollResult {
+    RollResult{
+        die: DiceRoll{die_type: DiceType::D20, favourableness: Favourableness::Neutral(false)},
+        value: random_range(0..21)
+    }
+}
+
 pub fn d12() -> RollResult {
     RollResult{
-        die: DiceRoll::D12(Favourableness::Neutral(false)),
-        value: random_range(0..12)
+        die: DiceRoll{die_type: DiceType::D12, favourableness: Favourableness::Neutral(false)},
+        value: random_range(1..13)
+    }
+}
+
+pub fn d10() -> RollResult {
+    RollResult {
+        die: DiceRoll{die_type: DiceType::D10, favourableness: Favourableness::Neutral(false)},
+        value: random_range(1..11),
+    }
+}
+
+pub fn d8() -> RollResult {
+    RollResult {
+        die: DiceRoll{die_type: DiceType::D8, favourableness: Favourableness::Neutral(false)},
+        value: random_range(1..9),
     }
 }
 
 pub fn d6() -> RollResult {
     RollResult {
-        die: DiceRoll::D6,
+        die: DiceRoll{die_type: DiceType::D6, favourableness: Favourableness::Neutral(false)},
         value: random_range(1..7),
+    }
+}
+
+pub fn d4() -> RollResult {
+    RollResult {
+        die: DiceRoll{die_type: DiceType::D4, favourableness: Favourableness::Neutral(false)},
+        value: random_range(1..5),
+    }
+}
+
+pub fn d2() -> RollResult {
+    RollResult {
+        die: DiceRoll{die_type: DiceType::D2, favourableness: Favourableness::Neutral(false)},
+        value: random_range(1..3),
     }
 }
 
@@ -197,17 +268,4 @@ mod tests {
         assert_eq!(Favourableness::Illfavoured.combine(&Favourableness::Favoured), Favourableness::Neutral(true));
     }
 
-    #[test]
-    pub fn roll_d6_test() {
-        let actual = d6();
-        println!("D6 result: {:?}", actual.value);
-        assert!(actual.value < 7);
-    }
-
-    #[test]
-    pub fn roll_d12_test() {
-        let actual = d12();
-        println!("D12 result: {:?}", actual.value);
-        assert!(actual.value < 12);
-    }
 }

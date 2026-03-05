@@ -1,7 +1,7 @@
 use std::io::Write;
 use crate::dice::error::DiceError;
 use crate::dice::parser::parse_dice_roll;
-use crate::dice::rolls::{roll, RollResult};
+use crate::dice::rolls::{roll_fav, RollResult};
 
 mod dice;
 mod text_app;
@@ -24,7 +24,7 @@ fn roll_dice_app(roll_expressions_str: String) -> Result<(), DiceError>{
         let expression = &roll_expressions[i];
         let rolls = parse_dice_roll(expression)?;
         for roll_cmd in rolls {
-            results.push(roll(roll_cmd));
+            results.push(roll_fav(roll_cmd));
         }
     }
 
