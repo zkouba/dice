@@ -26,6 +26,25 @@ export function faces(die: DieType): number {
   return Number(die.slice(1));
 }
 
+const FAV_CYCLE: Fav[] = ["neutral", "favoured", "illfavoured"];
+
+/** Next favourableness in the cycle neutral -> favoured -> illfavoured -> … */
+export function nextFav(fav: Fav): Fav {
+  return FAV_CYCLE[(FAV_CYCLE.indexOf(fav) + 1) % FAV_CYCLE.length];
+}
+
+export function favSymbol(fav: Fav): string {
+  return fav === "favoured" ? "+" : fav === "illfavoured" ? "−" : "=";
+}
+
+export function favLabel(fav: Fav): string {
+  return fav === "favoured"
+    ? "Advantage"
+    : fav === "illfavoured"
+      ? "Disadvantage"
+      : "Neutral";
+}
+
 let ready: Promise<void> | null = null;
 
 /** Load + instantiate the wasm module. Safe to call repeatedly; runs once. */
