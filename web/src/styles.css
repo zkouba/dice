@@ -320,36 +320,22 @@ body {
 
 .die {
   position: relative;
-  /* Cast a shadow that follows each die's clipped silhouette. */
-  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.45));
+  /* The canvas is transparent around the die, so this shadow follows the
+     rendered polyhedron's silhouette rather than a square box. */
+  filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.5));
 }
 
-.die-value {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 68px;
-  height: 68px;
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: #15171f;
-  /* Faceted gem look: light top-left, shaded bottom-right. */
-  background: linear-gradient(
-    150deg,
-    color-mix(in srgb, var(--die, #888) 72%, #fff) 0%,
-    var(--die, #888) 48%,
-    color-mix(in srgb, var(--die, #888) 78%, #000) 100%
-  );
-  border-radius: 14px;
+/* The 3D die renders into this canvas (see dice3d.ts). */
+.die-canvas {
+  display: block;
 }
 
 /* --- Polyhedral silhouettes --------------------------------------------- */
-/* Each die type takes the outline of its real-world polyhedron. The shapes
-   are applied to the rolled dice (.die-value), the editor previews
-   (.die-chip) and the small swatch on each palette button (.die-btn::before). */
+/* The editor previews (.die-chip) and the small swatch on each palette button
+   (.die-btn::before) still use flat clip-path outlines of each polyhedron. The
+   rolled dice themselves are now real 3D meshes (see dice3d.ts). */
 
 /* d4 — tetrahedron: an upright triangle. */
-.die-d4 .die-value,
 .die-d4 .die-chip,
 .die-btn.die-d4::before {
   clip-path: polygon(50% 3%, 97% 95%, 3% 95%);
@@ -358,41 +344,27 @@ body {
 /* d6 — cube: keep the rounded square (no clip-path). */
 
 /* d8 — octahedron: a diamond. */
-.die-d8 .die-value,
 .die-d8 .die-chip,
 .die-btn.die-d8::before {
   clip-path: polygon(50% 2%, 98% 50%, 50% 98%, 2% 50%);
 }
 
 /* d10 — pentagonal trapezohedron: an elongated kite. */
-.die-d10 .die-value,
 .die-d10 .die-chip,
 .die-btn.die-d10::before {
   clip-path: polygon(50% 0%, 92% 36%, 50% 100%, 8% 36%);
 }
 
 /* d12 — dodecahedron: a pentagon. */
-.die-d12 .die-value,
 .die-d12 .die-chip,
 .die-btn.die-d12::before {
   clip-path: polygon(50% 1%, 98% 38%, 80% 99%, 20% 99%, 2% 38%);
 }
 
 /* d20 — icosahedron: a hexagon. */
-.die-d20 .die-value,
 .die-d20 .die-chip,
 .die-btn.die-d20::before {
   clip-path: polygon(50% 0%, 95% 26%, 95% 74%, 50% 100%, 5% 74%, 5% 26%);
-}
-
-/* Nudge the number into the visual centre of the tapered shapes. */
-.die-d4 .die-value {
-  align-items: flex-end;
-  padding-bottom: 6px;
-  font-size: 1.2rem;
-}
-.die-d12 .die-value {
-  padding-top: 4px;
 }
 
 .fav-badge {
@@ -429,30 +401,6 @@ body {
   font-size: 1.2rem;
   font-weight: 700;
   margin-left: auto;
-}
-
-/* --- Animation ---------------------------------------------------------- */
-
-.die-value.rolling {
-  animation: tumble 0.4s linear infinite;
-}
-
-.die-value.settled {
-  animation: pop 0.35s ease;
-}
-
-@keyframes tumble {
-  0% { transform: rotate(0deg) scale(1); }
-  25% { transform: rotate(90deg) scale(1.08); }
-  50% { transform: rotate(180deg) scale(0.96); }
-  75% { transform: rotate(270deg) scale(1.08); }
-  100% { transform: rotate(360deg) scale(1); }
-}
-
-@keyframes pop {
-  0% { transform: scale(1); }
-  45% { transform: scale(1.28); box-shadow: 0 0 0 6px color-mix(in srgb, var(--die) 40%, transparent); }
-  100% { transform: scale(1); }
 }
 
 /* --- Manage list -------------------------------------------------------- */
