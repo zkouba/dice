@@ -1,13 +1,22 @@
 // Home view: shows the currently selected set and lets the user roll it.
-import { faces, favLabel, favSymbol, rollDice } from "../dice";
-import { animateDie } from "../animation";
+import { favLabel, favSymbol, rollDice } from "../dice";
+import { Die3D } from "../dice3d";
 import { getSelected } from "../store";
 import { navigate } from "../router";
 import { escapeHtml, summarise } from "../util";
 
+const DIE_PX = 96; // on-screen size of each 3D die
+
 let rolling = false;
+// The 3D dice currently mounted in the tray. Disposed and rebuilt on every
+// re-render so we never leak GPU resources across navigations / store updates.
+let mounted: Die3D[] = [];
 
 export function renderRoller(outlet: HTMLElement): void {
+  // Tear down any dice from a previous render before replacing the DOM.
+  for (const d of mounted) d.dispose();
+  mounted = [];
+
   const set = getSelected();
   outlet.replaceChildren();
 
@@ -33,6 +42,7 @@ export function renderRoller(outlet: HTMLElement): void {
 
   const tray = document.createElement("div");
   tray.className = "tray";
+  const dice: Die3D[] = [];
   if (set.dice.length === 0) {
     tray.innerHTML = `<p class="tray-hint">This set has no dice. Edit it to add some.</p>`;
   } else {
@@ -40,10 +50,10 @@ export function renderRoller(outlet: HTMLElement): void {
       const chip = document.createElement("div");
       chip.className = `die die-${d.die}`;
 
-      const value = document.createElement("span");
-      value.className = "die-value";
-      value.textContent = d.die;
-      chip.append(value);
+      const canvas = document.createElement("canvas");
+      canvas.className = "die-canvas";
+      chip.append(canvas);
+      dice.push(new Die3D(d.die, canvas, DIE_PX));
 
       if (d.fav !== "neutral") {
         const badge = document.createElement("span");
@@ -55,6 +65,7 @@ export function renderRoller(outlet: HTMLElement): void {
       tray.append(chip);
     }
   }
+  mounted = dice;
 
   const actions = document.createElement("div");
   actions.className = "actions";
@@ -76,12 +87,9 @@ export function renderRoller(outlet: HTMLElement): void {
     total.textContent = "";
 
     const results = rollDice(set.dice.map((d) => ({ die: d.die, fav: d.fav })));
-    const valueEls = tray.querySelectorAll<HTMLElement>(".die-value");
     await Promise.all(
       results.map((r, i) =>
-        valueEls[i]
-          ? animateDie(valueEls[i], faces(r.die), r.value)
-          : Promise.resolve(),
+        dice[i] ? dice[i].roll(r.value) : Promise.resolve(),
       ),
     );
 
