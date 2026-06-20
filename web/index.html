@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dice Roller</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-header">
+        <h1>🎲 Dice Roller</h1>
+        <p class="tagline">Rolled by a Rust engine, in your browser.</p>
+      </header>
+
+      <main class="layout">
+        <section class="builder">
+          <h2 class="section-title">Add dice</h2>
+          <div class="palette" id="palette"></div>
+
+          <h2 class="section-title">Your roll</h2>
+          <div class="tray" id="tray"></div>
+
+          <div class="actions">
+            <button id="roll" class="btn btn-primary" disabled>Roll</button>
+            <button id="clear" class="btn" disabled>Clear</button>
+            <span class="total" id="total"></span>
+          </div>
+        </section>
+
+        <aside class="sets">
+          <h2 class="section-title">Saved sets</h2>
+          <form id="saveForm" class="save-form">
+            <input id="setName" type="text" placeholder="Name this set…" autocomplete="off" />
+            <button class="btn" type="submit">Save</button>
+          </form>
+          <ul class="set-list" id="setList"></ul>
+        </aside>
+      </main>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
