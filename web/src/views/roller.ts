@@ -1,21 +1,20 @@
-// Home view: shows the currently selected set and lets the user roll it.
-import { favLabel, favSymbol, rollDice } from "../dice";
-import { Die3D } from "../dice3d";
+// Home view: shows the currently selected set and lets the user roll it in a
+// big 3D tray where the dice tumble around and bounce off each other.
+import { rollDice } from "../dice";
+import { DiceTray } from "../dice3d";
 import { getSelected } from "../store";
 import { navigate } from "../router";
 import { escapeHtml, summarise } from "../util";
 
-const DIE_PX = 96; // on-screen size of each 3D die
-
 let rolling = false;
-// The 3D dice currently mounted in the tray. Disposed and rebuilt on every
-// re-render so we never leak GPU resources across navigations / store updates.
-let mounted: Die3D[] = [];
+// The tray currently mounted. Disposed and rebuilt on every re-render so we
+// never leak GPU resources across navigations / store updates.
+let tray: DiceTray | null = null;
 
 export function renderRoller(outlet: HTMLElement): void {
-  // Tear down any dice from a previous render before replacing the DOM.
-  for (const d of mounted) d.dispose();
-  mounted = [];
+  // Tear down any tray from a previous render before replacing the DOM.
+  tray?.dispose();
+  tray = null;
 
   const set = getSelected();
   outlet.replaceChildren();
@@ -40,32 +39,8 @@ export function renderRoller(outlet: HTMLElement): void {
   head.className = "roller-head";
   head.innerHTML = `<h2>${escapeHtml(set.name)}</h2><p class="muted">${summarise(set)}</p>`;
 
-  const tray = document.createElement("div");
-  tray.className = "tray";
-  const dice: Die3D[] = [];
-  if (set.dice.length === 0) {
-    tray.innerHTML = `<p class="tray-hint">This set has no dice. Edit it to add some.</p>`;
-  } else {
-    for (const d of set.dice) {
-      const chip = document.createElement("div");
-      chip.className = `die die-${d.die}`;
-
-      const canvas = document.createElement("canvas");
-      canvas.className = "die-canvas";
-      chip.append(canvas);
-      dice.push(new Die3D(d.die, canvas, DIE_PX));
-
-      if (d.fav !== "neutral") {
-        const badge = document.createElement("span");
-        badge.className = `fav-badge fav-${d.fav}`;
-        badge.textContent = favSymbol(d.fav);
-        badge.title = favLabel(d.fav);
-        chip.append(badge);
-      }
-      tray.append(chip);
-    }
-  }
-  mounted = dice;
+  const trayEl = document.createElement("div");
+  trayEl.className = "tray";
 
   const actions = document.createElement("div");
   actions.className = "actions";
@@ -77,21 +52,32 @@ export function renderRoller(outlet: HTMLElement): void {
   total.className = "total";
   actions.append(rollBtn, total);
 
-  view.append(head, tray, actions);
+  view.append(head, trayEl, actions);
   outlet.append(view);
 
+  if (set.dice.length === 0) {
+    trayEl.innerHTML = `<p class="tray-hint">This set has no dice. Edit it to add some.</p>`;
+    return;
+  }
+
+  // The tray canvas fills the box; DiceTray watches it for resizes.
+  const canvas = document.createElement("canvas");
+  canvas.className = "tray-canvas";
+  trayEl.append(canvas);
+  const instance = new DiceTray(
+    canvas,
+    set.dice.map((d) => ({ die: d.die, fav: d.fav })),
+  );
+  tray = instance;
+
   rollBtn.addEventListener("click", async () => {
-    if (rolling || set.dice.length === 0) return;
+    if (rolling) return;
     rolling = true;
     rollBtn.disabled = true;
     total.textContent = "";
 
     const results = rollDice(set.dice.map((d) => ({ die: d.die, fav: d.fav })));
-    await Promise.all(
-      results.map((r, i) =>
-        dice[i] ? dice[i].roll(r.value) : Promise.resolve(),
-      ),
-    );
+    await instance.roll(results.map((r) => r.value));
 
     total.textContent = `Total: ${results.reduce((s, r) => s + r.value, 0)}`;
     rolling = false;
