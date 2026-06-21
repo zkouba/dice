@@ -27,6 +27,7 @@ interface Face {
   normal: THREE.Vector3; // outward unit normal
   up: THREE.Vector3; // an in-plane unit "up" used to keep numbers upright
   radius: number; // mean distance centre -> vertices, for sizing the number
+  verts: THREE.Vector3[]; // the face's unique corner vertices (local space)
 }
 
 /** Build the raw geometry for a die type, centred on the origin. */
@@ -216,7 +217,7 @@ function describeFace(pos: PositionAttr, tris: number[]): Face {
   }
   radius /= uniq.size;
 
-  return { centroid, normal, up, radius };
+  return { centroid, normal, up, radius, verts: [...uniq.values()] };
 }
 
 // --- Number textures (shared across dice) --------------------------------- //
@@ -354,6 +355,11 @@ class Body {
   readonly group = new THREE.Group();
   readonly faces: Face[];
   readonly labels: THREE.Mesh[] = [];
+  // d4 only: numbers live on the corners, not the faces. `vertices` are the four
+  // local corner positions; each `cornerLabel` records which vertex it belongs
+  // to, since one vertex's number is repeated on all three faces meeting there.
+  readonly vertices: THREE.Vector3[] = [];
+  private readonly cornerLabels: { vertex: number; mesh: THREE.Mesh }[] = [];
   readonly favSprite: THREE.Sprite | null = null;
   readonly shadow: THREE.Mesh;
   readonly radius = DIE_RADIUS;
@@ -397,12 +403,18 @@ class Body {
     });
     this.group.add(new THREE.LineSegments(this.edgeGeo, this.edgeMat));
 
-    // A number on every face (face i bears the value i+1 by default).
-    this.faces.forEach((face, i) => {
-      const label = this.makeLabel(face, String(i + 1));
-      this.labels.push(label);
-      this.group.add(label);
-    });
+    if (this.die === "d4") {
+      // A d4 has no top face when it rests — a vertex points up — so it carries
+      // numbered corners: each vertex's number appears on all faces around it.
+      this.buildCornerLabels();
+    } else {
+      // A number on every face (face i bears the value i+1 by default).
+      this.faces.forEach((face, i) => {
+        const label = this.makeLabel(face, String(i + 1));
+        this.labels.push(label);
+        this.group.add(label);
+      });
+    }
 
     // Favoured / illfavoured marker that floats above the die.
     if (fav !== "neutral") {
@@ -446,8 +458,73 @@ class Body {
     return mesh;
   }
 
+  /**
+   * Build the d4's corner numbers: identify the four shared vertices, then drop
+   * a small number near each corner of every face (so each vertex's number is
+   * printed three times, once on each adjacent face).
+   */
+  private buildCornerLabels(): void {
+    const key = (v: THREE.Vector3) =>
+      `${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)}`;
+    const index = new Map<string, number>();
+    for (const f of this.faces) {
+      for (const v of f.verts) {
+        const k = key(v);
+        if (!index.has(k)) {
+          index.set(k, this.vertices.length);
+          this.vertices.push(v.clone());
+        }
+      }
+    }
+    for (const f of this.faces) {
+      for (const v of f.verts) {
+        const vi = index.get(key(v))!;
+        const mesh = this.makeCornerLabel(f, v, String(vi + 1));
+        this.cornerLabels.push({ vertex: vi, mesh });
+        this.group.add(mesh);
+      }
+    }
+  }
+
+  /**
+   * A small number near one corner of a face, oriented so its top points at the
+   * corner — that way it reads upright when that corner is the die's apex.
+   */
+  private makeCornerLabel(
+    face: Face,
+    vertex: THREE.Vector3,
+    text: string,
+  ): THREE.Mesh {
+    const up = vertex.clone().sub(face.centroid).normalize();
+    const right = new THREE.Vector3().crossVectors(up, face.normal);
+    const basis = new THREE.Matrix4().makeBasis(right, up, face.normal);
+    const s = face.radius * 0.55;
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(s, s),
+      new THREE.MeshBasicMaterial({
+        map: numberTexture(text),
+        transparent: true,
+        depthWrite: false,
+      }),
+    );
+    mesh.quaternion.setFromRotationMatrix(basis);
+    mesh.position
+      .copy(face.centroid)
+      .addScaledVector(vertex.clone().sub(face.centroid), 0.52)
+      .addScaledVector(face.normal, 0.01);
+    return mesh;
+  }
+
   /** Reset every face back to its default number (call before a fresh throw). */
   resetLabels(): void {
+    if (this.die === "d4") {
+      for (const c of this.cornerLabels) {
+        const mat = c.mesh.material as THREE.MeshBasicMaterial;
+        mat.map = numberTexture(String(c.vertex + 1));
+        mat.needsUpdate = true;
+      }
+      return;
+    }
     this.labels.forEach((label, i) => {
       const mat = label.material as THREE.MeshBasicMaterial;
       mat.map = numberTexture(String(i + 1));
@@ -460,6 +537,31 @@ class Body {
     const mat = this.labels[idx].material as THREE.MeshBasicMaterial;
     mat.map = numberTexture(String(value));
     mat.needsUpdate = true;
+  }
+
+  /** d4: paint `value` onto vertex `vi` (every corner copy of that vertex). */
+  setVertexValue(vi: number, value: number): void {
+    for (const c of this.cornerLabels) {
+      if (c.vertex !== vi) continue;
+      const mat = c.mesh.material as THREE.MeshBasicMaterial;
+      mat.map = numberTexture(String(value));
+      mat.needsUpdate = true;
+    }
+  }
+
+  /** d4: index of the vertex pointing most straight up under `quat`. */
+  topVertex(quat: THREE.Quaternion): number {
+    const wv = new THREE.Vector3();
+    let best = -Infinity;
+    let idx = 0;
+    for (let i = 0; i < this.vertices.length; i++) {
+      const y = wv.copy(this.vertices[i]).applyQuaternion(quat).y;
+      if (y > best) {
+        best = y;
+        idx = i;
+      }
+    }
+    return idx;
   }
 
   /**
@@ -554,6 +656,10 @@ class Body {
     for (const label of this.labels) {
       label.geometry.dispose();
       (label.material as THREE.Material).dispose();
+    }
+    for (const c of this.cornerLabels) {
+      c.mesh.geometry.dispose();
+      (c.mesh.material as THREE.Material).dispose();
     }
     this.shadow.geometry.dispose();
     (this.shadow.material as THREE.Material).dispose();
@@ -919,10 +1025,15 @@ export class DiceTray {
     const camDir = new THREE.Vector3();
     this.settleData = this.bodies.map((b, i) => {
       const rest = b.restPose(b.quat);
-      camDir.subVectors(this.camera.position, b.pos).normalize();
-      const faceIdx = b.faceForReadout(rest.quat, camDir);
-      const value = this.pendingValues[i] ?? faceIdx + 1;
-      b.setFaceValue(faceIdx, value);
+      if (b.die === "d4") {
+        // The result is the corner pointing up once the die rests on a face.
+        const vi = b.topVertex(rest.quat);
+        b.setVertexValue(vi, this.pendingValues[i] ?? vi + 1);
+      } else {
+        camDir.subVectors(this.camera.position, b.pos).normalize();
+        const faceIdx = b.faceForReadout(rest.quat, camDir);
+        b.setFaceValue(faceIdx, this.pendingValues[i] ?? faceIdx + 1);
+      }
       return {
         fromPos: b.pos.clone(),
         fromQuat: b.quat.clone(),
